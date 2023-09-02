@@ -1,0 +1,214 @@
+ </template>
+   <el-dialog
+      title="测试连接"
+      width="1000px"
+      destroy-on-close
+      v-model="formConfs.testConnect_temp"
+    >
+      <el-form
+        :model="testDeviceForm"
+        ref="createTestFormRef"
+        :rules="testDeviceFormRules"
+        label-position="top"
+      >
+        <el-row :gutter="40">
+          <el-col :span="12">
+            <el-form-item label="模式" prop="pattern">
+              <el-select v-model="testDeviceForm.pattern" placeholder="请选择模式">
+                <el-option label="自动" :value="true"></el-option>
+                <el-option label="自定义" :value="false"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12" v-if="!testDeviceForm.pattern">
+            <el-form-item label="主机地址" prop="hostname" >
+              <el-input v-model="testDeviceForm.hostname" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12"  v-if="!testDeviceForm.pattern">
+            <el-form-item label="端口号" prop="port" >
+              <el-input v-model="testDeviceForm.port" autocomplete="off" />
+            </el-form-item>
+           </el-col>
+
+          </el-row>
+        </el-form>
+
+     <template #footer>
+       <span class="dialog-footer">
+         <el-button @click="cancelTestCreateForm">取消</el-button>
+         <el-button type="primary" @click="confirmTestCreateForm">
+           确定
+         </el-button>
+       </span>
+     </template>
+    </el-dialog>
+</template>
+<script setup>
+import { ElMessage } from 'element-plus'
+import { UploadFilled } from '@element-plus/icons-vue'
+import { onMounted, reactive, ref } from '@vue/runtime-core'
+import {
+  addDev,
+  delDevice,
+  getDevHost,
+  editDevDetail,
+  getDevList,
+  getDevDetail,
+  downTemplate,
+  getDevListTotal,
+//新增两个接口导入
+  testConnect,
+  deviceStart,
+} from '../request/index'
+
+let createTestFormRef = ref()
+let testDeviceForm = reactive({
+    pattern: true,
+    hostname: 'ip/域名',
+    port: 22,
+})
+let testDeviceFormRules=reactive({
+  pattern:[
+    {
+      required: true,
+      message: '该值不能为空',
+      trigger: 'change',
+    }
+  ],
+  hostname:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+  port:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+})
+
+let formConfs = reactive({
+  up_file_url:(process.env.NODE_ENV === 'development' ? '/api':'/API')+'/upload_dev_profile',
+  type: 'create',
+  hostname: '',
+  visible: false,
+  visible_temp: false,
+  startLoading: false,
+  templateLoading: false,
+  testStartLoading: false,
+  getIpStatus:false,
+  getBackupConfig:false,
+// 新增加了testConnect_temp
+  testConnect_temp:false,
+  message: [],
+})
+onMounted(() => {
+  console.log(location.hostname)
+  getListTotal()
+  getList()
+// 新增加了connectWebSocket
+  connectWebSocket()
+})
+新增加了testConnect_temp
+const testConnect_temp = () => {
+  formConfs.testConnect_temp = true
+}
+
+const cancelTestCreateForm = () => {
+  formConfs.testConnect_temp = false
+  createTestFormRef.value.resetFields()
+}
+
+const confirmTestCreateForm = () => {
+  createTestFormRef.value.validate((valid, fields) => {
+    if (valid) {
+      createTestForm().then(() => {
+        cancelTestCreateForm()
+      })
+    }
+  })
+}
+
+const createTestForm = async () => {
+  console.log(testDeviceForm)
+  try {
+    let data = await testConnect(testDeviceForm)
+    if (data.msg === 'ok') {
+      tableData.splice(index, 1)
+      ElMessage.success('操作成功')
+    } else {
+      ElMessage.error(data.msg)
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+const websocket = ref(null);
+const websocketStatus = ref('Connecting...');
+const connectWebSocket = () => {
+  // 创建 WebSocket 连接
+  websocket.value = new WebSocket('ws://127.0.0.1:18887/API/ws');
+
+  // 监听 WebSocket 事件
+  websocket.value.onopen = () => {
+    websocketStatus.value = 'Connected';
+    websocket.value.send('连接成功啦！')
+    // WebSocket 连接成功后，你可以在这里发送消息或执行其他操作
+  };
+
+  websocket.value.onerror = () => {
+    websocketStatus.value = 'Error';
+  };
+
+  websocket.value.onclose = () => {
+    websocketStatus.value = 'Disconnected';
+  };
+  websocket.value.onmessage = (event) => {
+    formConfs.message.push(event.data)
+  };
+};
+
+我怎么每次刷新页面时，向后端发送一个websocket连接断开请求，页面刷新后加载完成在连接websocket请求？
+
+onMounted(() => {
+  console.log(location.hostname)
+  getListTotal()
+  getList()
+// 新增加了connectWebSocket
+  connectWebSocket()
+})
+
+const websocket = ref(null);
+const websocketStatus = ref('Connecting...');
+const connectWebSocket = () => {
+  // 创建 WebSocket 连接
+  websocket.value = new WebSocket('ws://127.0.0.1:18887/API/ws');
+
+  // 监听 WebSocket 事件
+  websocket.value.onopen = () => {
+    websocketStatus.value = 'Connected';
+    websocket.value.send('连接成功啦！')
+    // WebSocket 连接成功后，你可以在这里发送消息或执行其他操作
+  };
+
+  websocket.value.onerror = () => {
+    websocketStatus.value = 'Error';
+  };
+
+  websocket.value.onclose = () => {
+    websocketStatus.value = 'Disconnected';
+  };
+  websocket.value.onmessage = (event) => {
+    formConfs.message.push(event.data)
+  };
+};
+
+我目前是这么做的。

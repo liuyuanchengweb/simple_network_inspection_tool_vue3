@@ -10,24 +10,9 @@
         >
         <el-button type="primary" @click="createTemplate">批量导入设备</el-button>
         <el-button type="primary" @click="createDev">新增设备</el-button>
-        <el-button
-          type="success"
-          :loading="formConfs.testStartLoading"
-          @click="testStartDevice"
-          >测试连接</el-button
-        >
-        <el-button
-          type="success"
-          :loading="formConfs.startLoading"
-          @click="initSocket"
-          >启动巡检</el-button
-        >
-        <el-button
-          type="success"
-          :loading="formConfs.getBackupConfig"
-          @click="backupConfig"
-          >备份配置文件</el-button
-        >
+        <el-button type="success" @click="testConnect_temp">测试连接</el-button>
+        <el-button type="success" @click="deviceStart_temp">采集信息</el-button>
+
       </div>
       <div class="query">
         <el-form-item label="设备名" size="default">
@@ -173,13 +158,109 @@
         </template>
       </el-upload>
     </el-dialog>
+
+    <el-dialog
+      title="测试连接"
+      width="500px"
+      destroy-on-close
+      v-model="formConfs.testConnect_temp"
+    >
+      <el-form
+        :model="testDeviceForm"
+        ref="createTestFormRef"
+        :rules="testDeviceFormRules"
+        label-position="top"
+      >
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="模式" prop="pattern">
+              <el-select v-model="testDeviceForm.pattern" placeholder="请选择模式">
+                <el-option label="自动" :value="true"></el-option>
+                <el-option label="自定义" :value="false"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12" v-if="!testDeviceForm.pattern">
+            <el-form-item label="主机地址" prop="hostname" >
+              <el-input v-model="testDeviceForm.hostname" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+
+          <el-col :span="12"  v-if="!testDeviceForm.pattern">
+            <el-form-item label="端口号" prop="port" >
+              <el-input v-model="testDeviceForm.port" autocomplete="off" />
+            </el-form-item>
+           </el-col>
+          </el-row>
+        </el-form>
+
+     <template #footer>
+       <span class="dialog-footer">
+         <el-button @click="cancelTestCreateForm">取消</el-button>
+         <el-button type="primary" @click="confirmTestCreateForm">
+           确定
+         </el-button>
+       </span>
+     </template>
+    </el-dialog>
+
+    <el-dialog
+      title="采集信息"
+      width="500px"
+      destroy-on-close
+      v-model="formConfs.deviceStart_temp"
+    >
+      <el-form
+        :model="deviceStartForm"
+        ref="deviceStartFormRef"
+        :rules="deviceStartFormRules"
+        label-position="top"
+      >
+        <el-row :gutter="12">
+          <el-col :span="12">
+            <el-form-item label="模式" prop="execute_all">
+              <el-select v-model="deviceStartForm.execute_all" placeholder="请选择模式">
+                <el-option label="自动" :value="true"></el-option>
+                <el-option label="自定义" :value="false"></el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12" >
+            <el-form-item label="采集数据保存方式" prop="content_process" >
+              <el-select v-model="deviceStartForm.content_process" placeholder="请选择模式">
+                <el-option label="备份配置文件" :value="contentProcessEnum.backup_txt"></el-option>
+                <el-option label="保存文本格式" :value="contentProcessEnum.txt"></el-option>
+                <el-option label="保存内容单表excel" :value="contentProcessEnum.excel"></el-option>
+                <el-option label="保存多表excel" :value="contentProcessEnum.excel_sheet"></el-option>
+                <el-option label="自定义保存格式" :value="contentProcessEnum.custom"></el-option>
+              </el-select>
+            </el-form-item>
+           </el-col>
+          <el-col :span="12" v-if="!deviceStartForm.execute_all">
+            <el-form-item label="执行方法名称" prop="target_func_name" >
+              <el-input v-model="deviceStartForm.target_func_name" autocomplete="off" />
+            </el-form-item>
+          </el-col>
+          </el-row>
+        </el-form>
+
+     <template #footer>
+       <span class="dialog-footer">
+         <el-button @click="canceldeviceStartForm">取消</el-button>
+         <el-button type="primary" @click="confirmdeviceStart">
+           确定
+         </el-button>
+       </span>
+     </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { onMounted, reactive, ref } from '@vue/runtime-core'
+import { onMounted, reactive, ref,onBeforeUnmount } from '@vue/runtime-core'
 
 import {
   addDev,
@@ -190,6 +271,8 @@ import {
   getDevDetail,
   downTemplate,
   getDevListTotal,
+  testConnect,
+  deviceStart,
 } from '../request/index'
 
 
@@ -212,6 +295,75 @@ let createForm = reactive({
   password: 'password',
   super_pw: '',
 })
+
+let createTestFormRef = ref()
+let testDeviceForm = reactive({
+    pattern: true,
+    hostname: 'ip/域名',
+    port: 22,
+})
+let testDeviceFormRules=reactive({
+  pattern:[
+    {
+      required: true,
+      message: '该值不能为空',
+      trigger: 'change',
+    }
+  ],
+  hostname:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+  port:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+})
+
+let deviceStartFormRef=ref()
+let deviceStartForm=reactive({
+  execute_all: true,
+  target_func_name: 'backup_config',
+  content_process: '备份配置文件'
+})
+let deviceStartFormRules=reactive({
+  execute_all:[
+    {
+      required: true,
+      message: '该值不能为空',
+      trigger: 'change',
+    }
+  ],
+  target_func_name:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+  content_process:[
+    {
+      required: false,
+      message: '',
+      trigger: 'change',
+    }
+  ],
+})
+
+let contentProcessEnum={
+  backup_txt:'备份配置文件',
+  txt:'保存内容txt',
+  excel:'保存内容单表excel',
+  excel_sheet:'保存多表excel',
+  custom:'自定义保存格式',
+}
+
 let formRules = reactive({
   hostname: [
     {
@@ -270,6 +422,7 @@ let formRules = reactive({
     },
   ],
 })
+
 let formConfs = reactive({
   up_file_url:(process.env.NODE_ENV === 'development' ? '/api':'/API')+'/upload_dev_profile',
   type: 'create',
@@ -281,6 +434,8 @@ let formConfs = reactive({
   testStartLoading: false,
   getIpStatus:false,
   getBackupConfig:false,
+  testConnect_temp:false,
+  deviceStart_temp:false,
   message: [],
 })
 
@@ -288,6 +443,7 @@ onMounted(() => {
   console.log(location.hostname)
   getListTotal()
   getList()
+  connectWebSocket()
 })
 
 const createDev = () => {
@@ -296,6 +452,12 @@ const createDev = () => {
 }
 const createTemplate = () => {
   formConfs.visible_temp = true
+}
+const testConnect_temp = () => {
+  formConfs.testConnect_temp = true
+}
+const deviceStart_temp = () =>{
+  formConfs.deviceStart_temp=true
 }
 
 const fileSuccess = (data) => {
@@ -325,6 +487,67 @@ const confirmCreateForm = () => {
       })
     }
   })
+}
+const cancelTestCreateForm = () => {
+  formConfs.testConnect_temp = false
+  if (createTestFormRef.value) {
+    createTestFormRef.value.resetFields()
+  }
+}
+
+const confirmTestCreateForm = () => {
+  createTestFormRef.value.validate((valid, fields) => {
+    if (valid) {
+      createTestForm().then(() => {
+        cancelTestCreateForm()
+      })
+    }
+  })
+}
+
+const createTestForm = async () => {
+  console.log(testDeviceForm)
+  try {
+    let data = await testConnect(testDeviceForm)
+    if (data.msg === 'ok') {
+      tableData.splice(index, 1)
+      ElMessage.success('操作成功')
+    } else {
+      ElMessage.error(data.msg)
+    }
+  } catch (error) {
+    console.log(error)
+  }
+}
+const canceldeviceStartForm = () => {
+  formConfs.deviceStart_temp = false
+  if (deviceStartFormRef.value) {
+    deviceStartFormRef.value.resetFields()
+  }
+}
+const confirmdeviceStart = () => {
+  deviceStartFormRef.value.validate((valid, fields) => {
+    if (valid) {
+      deviceStart_func().then(() => {
+        canceldeviceStartForm()
+      })
+    }
+  })
+}
+
+const deviceStart_func = async () => {
+  console.log(deviceStartForm)
+  try {
+    let data = await deviceStart(deviceStartForm)
+    if (data.msg === 'ok') {
+      tableData.splice(index, 1)
+      ElMessage.success('操作成功')
+    } else {
+      ElMessage.error(data.msg)
+    }
+  } catch (error) {
+    console.log(error)
+  }
 }
 
 const editHandle = async (hostname, id) => {
@@ -556,6 +779,63 @@ const backupConfig = () => {
     formConfs.message.push(msg.data)
   }
 }
+const websocket = ref(null);
+const websocketStatus = ref('Connecting...');
+const connectWebSocket = () => {
+  // 创建 WebSocket 连接
+  websocket.value = new WebSocket('ws://127.0.0.1:18887/API/ws');
+
+  // 监听 WebSocket 事件
+  websocket.value.onopen = () => {
+    websocketStatus.value = 'Connected';
+    // websocket.value.send('连接成功啦！')
+    // WebSocket 连接成功后，你可以在这里发送消息或执行其他操作
+  };
+
+  websocket.value.onerror = () => {
+    websocketStatus.value = 'Error';
+  };
+
+  websocket.value.onclose = () => {
+    websocketStatus.value = 'Disconnected';
+  };
+  websocket.value.onmessage = (event) => {
+    const receivedData = JSON.parse(event.data);
+    if (receivedData.msg === "ok") {
+    console.log(event.data); // 如果是心跳消息，打印到控制台
+  } else {
+    // 否则将消息添加到 formConfs.message 数组
+    formConfs.message.push(receivedData.msg);
+  }
+  };
+};
+
+// onMounted(() => {
+//   // 在组件挂载时执行 WebSocket 连接
+//   connectWebSocket();
+// });
+const closeWebSocket = () => {
+  console.log(websocket.value)
+  if (websocket.value && websocket.value.readyState === WebSocket.OPEN) {
+    console.log('-------执行了关闭方法')
+    // websocket.value.send('close')
+    websocket.value.close();
+  }
+};
+
+// onBeforeUnmount(() => {
+//   // 在页面卸载前关闭 WebSocket 连接
+//   console.log('刷新触发')
+//   closeWebSocket();
+// });
+// window.addEventListener('beforeunload', () => {
+//   // 在页面即将刷新时关闭 WebSocket 连接
+//   closeWebSocket();
+// });
+window.addEventListener('unload', () => {
+  // 在页面即将刷新时关闭 WebSocket 连接
+  closeWebSocket();
+});
 </script>
 
 <style lang="less" scoped>

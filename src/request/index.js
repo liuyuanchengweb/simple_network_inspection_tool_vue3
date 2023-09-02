@@ -41,4 +41,10 @@ export const delDevice = (id) => {
 export const getBackupConfig = () => {
   return http.get('/backup_config')
 }
+export const testConnect = (action) => {
+  return http.post('/TestDevice', action)
+}
 
+export const deviceStart = (action) => {
+  return http.post('/DeviceStart', action)
+}
